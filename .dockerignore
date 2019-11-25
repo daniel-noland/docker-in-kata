@@ -1,0 +1,6 @@
+volumes
+volumes/**
+libvirtd.tar
+.idea
+.idea/**
+.git
