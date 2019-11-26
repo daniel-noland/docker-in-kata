@@ -6,7 +6,6 @@ VOLUMES_DIR="${SCRIPT_DIR}/volumes"
 LOCAL_DOCKER_VOLUME="${VOLUMES_DIR}/var/lib/docker"
 
 docker run \
-    --cap-add=ALL \
     --cap-add=NET_ADMIN \
     --cap-add=SYS_ADMIN \
     --cap-add=SYS_RESOURCE \
@@ -60,7 +59,6 @@ docker exec \
     --tty \
     "${BARE_METAL_PROXY_CONTAINER_NAME}" \
     docker run \
-        --cap-add=ALL \
         --cap-add=NET_ADMIN \
         --cap-add=SYS_ADMIN \
         --cap-add=SYS_RESOURCE \
