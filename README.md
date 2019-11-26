@@ -11,7 +11,7 @@ git clone "$THIS_REPO" && cd docker-in-kata
 ./run.sh
 ```
 
-With that you should be at a root prompt in a tripple nested docker container.
+With that you should be at a root prompt in a triple nested docker container.
 
 To run a different docker container in the kata container you can (after exiting the previous root shell)
 
@@ -103,3 +103,62 @@ I did several non-obvious things to make a docker daemon run properly inside a k
 
    ![docs/relationships.svg](docs/relationships.svg)
 
+# Future plans
+
+
+I think that the security of the setup is one area which can be greatly
+improved.  I did my best to reduce the privileges granted to each of the outer
+two containers but I have not iterated on that very much.  I think it may be
+possible to remove `--security-opt seccomp=unconfined` from one or both of the
+outer containers' run commands.  If anybody has insights as to the actual
+minimum privileges that kata can run with I would really appreciate pointers
+about where I can cut down the privilege set.  Maybe I will play around with
+some seccomp-bpf or apparmor / selinux inside the kata container.  I could also
+try the new linux kernel 5.4 lockdown mode.
+
+I have a few other things I would like to accomplish with this project:
+
+1. Fix the container networking so that the nested kata container is available
+   via ssh.  That way you can set
+   `DOCKER_HOST=ssh://$SOME_USER@$THE_KATA_CONTAINER` to use the kata container
+   as a transparent build / run environment.  This should be easy, it will just
+   take some plumbing.
+2. Replace systemd with supervisord in one or both of the outer two containers.
+   I don't think anything as heavy as systemd is really necessary here, it is
+   just the thing I am most familiar with.  Supervisord is likely better suited
+   to this task.
+3. Make a parallel version where I replace docker with podman.  I have managed
+   to make podman work with the btrfs graph driver and with kata elsewhere so
+   in theory this approach should function.  It may also offer improved
+   security since podman would not require exposing a root privileged daemon.
+   The podman approach would require that I not replace systemd with
+   supervisord.
+4. Look into running an entire mesos + marathon, kubernetes, or nomad cluster
+   inside this setup at the first layer of containerization.  This approach
+   would provide a playground for the design and development of distributed
+   systems / micro service architectures (you could quickly test scaling
+   behavior, fault tolerance, failover).
+5. Look into more convenient ways of sharing containers between the nesting
+   scopes.  Right now the only known ways to share container images between the
+   kata scope and the host scope are:
+   1. Use a shared container registry.  Configuring access credentials makes
+      this approach somewhat annoying.  One way would be to volume mount
+      `~/.docker` from the host to the kata container (hopefully read-only).
+      Another (likely more secure) approach would be to generate different
+      registry credentials and volume mount those in.
+   2. Mount the btrfs block device **read-only** in the host context (you will
+      likely corrupt the block device if you mount it read-write in two places
+      at once).  This approach has limited use since the outer docker daemon
+      will expect write access.  Simply being able to read the contents of the
+      nested `/var/lib/docker` is likely of little use.
+   3. Use `docker save` / `docker load` and a shared volume or `docker copy` to
+      exchange tar files.  This approach is very cumbersome.
+6. Look into more convenient ways of sharing container images between different
+   nested docker daemons.  This functionality would be very handy for testing
+   distributed systems simulations where each kata container is functioning as
+   a proxy for a distinct physical host.  One approach which may prove useful
+   (with some creativity) is to use LVM (or perhaps btrfs) snapshots.  This
+   could allow you to build in one kata container, take a snapshot, and then
+   quickly replicate the build to various other nested containers without the
+   time and storage cost of pushing and pulling the built image to a
+   potentially large number of docker daemons.
