@@ -43,7 +43,7 @@ done
 
 
 # NOTE: This is just a cleanup command (albeit an inelegant one).  We may have leftover container we don't care about
-#       during testing. The real problem here is the || true at the end.  May need a
+#       during testing. The real problem here is the || true at the end.  May need a exit code check of some kind.
 # TODO: remove this cleanup logic when you are not testing or hide it behind a flag.  It is a huge overreach to just
 #       blow away a container like this without any kind of warning or active consent from the user.
 docker exec \
@@ -90,7 +90,7 @@ while true; do
             --interactive \
             --tty \
             "${VM_CONTAINER_NAME}" \
-            /volumes/setup.sh \
+            /setup.sh \
     && break
     sleep 0.2
 done
@@ -108,7 +108,7 @@ docker exec \
             --interactive \
             --name "${RUNC_IN_KATA_CONTAINER_NAME}" \
             --rm \
-            --runtime kata \
+            --runtime runc \
             --tty \
             debian:buster \
             bash

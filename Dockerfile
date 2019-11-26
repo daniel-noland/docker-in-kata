@@ -69,5 +69,6 @@ RUN ./build-kernel.sh -c linux-5.4/.config -k linux-5.4/ setup \
  && ./build-kernel.sh -c linux-5.4/.config -k linux-5.4/ install
 
 COPY --chown=root:root ./assets/root/.ssh/ /root/.ssh/
+COPY --chown=root:root ./assets/setup.sh /setup.sh
 
 CMD ["/lib/systemd/systemd"]

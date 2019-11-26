@@ -6,10 +6,12 @@ source "${SCRIPT_DIR}/common.sh"
 VOLUMES_DIR="${SCRIPT_DIR}/volumes"
 LOCAL_DOCKER_VOLUME="${VOLUMES_DIR}/var/lib/docker"
 
+mkdir -p "${VOLUMES_DIR}/var/lib/docker"
+
 docker build "${SCRIPT_DIR}" \
     --tag "${BARE_METAL_PROXY_CONTAINER_NAME}"
 
-docker save "${BARE_METAL_PROXY_CONTAINER_NAME}" > "${SCRIPT_DIR}/volumes/kata-in-docker.tar"
+docker save "${BARE_METAL_PROXY_CONTAINER_NAME}" > "${VOLUMES_DIR}/kata-in-docker.tar"
 
 SCRIPT_DIR="$(dirname $(readlink -f ${0}))"
 dd if=/dev/zero of="${SCRIPT_DIR}/volumes/var_lib_docker.img" bs=1M count=10000

@@ -5,7 +5,8 @@
 If you just want to see a docker daemon run in a kata container you can do so with just a few commands.
 
 ```bash
-git clone $THIS_REPO && cd $THIS_REPO
+THIS_REPO="git@github.com:daniel-noland/docker-in-kata.git"
+git clone "$THIS_REPO" && cd docker-in-kata
 ./initial_setup.sh # Only needed the first time you run or if you would like to start over
 ./run.sh
 ```
