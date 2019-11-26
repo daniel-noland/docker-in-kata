@@ -1,0 +1,56 @@
+@startuml
+skinparam componentStyle uml2
+
+package "Physical Machine" as physical {
+    initial_setup.sh as initialSetup
+    initialSetup ....> proxy : creates image
+    run.sh as runScript
+    [docker daemon] as outerDocker
+    runScript --> outerDocker : tells to start proxy container
+    outerDocker --> proxy : launches kata-in-docker
+
+    database "host files" as host.volumes {
+        () var_lib_docker.img as dockerImg.host
+        () "kata-in-docker.tar" as kataInDocker.host
+        initialSetup --> dockerImg.host : creates and formats as btrfs
+        initialSetup --> kataInDocker.host : creates
+    }
+    package "Physical Machine Proxy Container (fairly high privileges)" as proxy {
+        database "mounted volumes" as proxy.volumes {
+            () "kata-in-docker.tar" as kataInDocker.proxy
+            () var_lib_docker.img as dockerImg.proxy
+            kataInDocker.host <--- kataInDocker.proxy : volume mounts
+            dockerImg.host <--- dockerImg.proxy : volume mounts
+        }
+        [systemd]
+        component kataDocker [
+            docker daemon
+            (can run kata containers)
+        ]
+        kataDocker <-- kataInDocker.proxy : loads
+        systemd --> kataDocker : launches
+        package "Kata Container (offers full VM isolation)" as kataContainer {
+            database "mounted volumes" as kata.volumes {
+                () "kata-in-docker.tar" as kataInDocker.kata
+                () var_lib_docker.img as dockerImg.kata
+                kataInDocker.proxy <--- kataInDocker.kata : volume mounts
+                dockerImg.proxy <--- dockerImg.kata : volume mounts
+            }
+            database "/dev/loop0" as loop0
+            () "/var/lib/docker" as varLibDocker
+            loop0 <.. varLibDocker : backing block device
+            [systemd] as nestedSystemd
+            component "docker daemon" as nestedDocker
+            varLibDocker <.. nestedDocker : storage for all images and containers
+            package "Isolated container (fairly restricted privileges)" as isolatedContainer {
+                [your isolated process] as isolatedProcess
+            }
+        }
+        kataDocker --> kataContainer : launches kata-in-docker
+        nestedSystemd --> nestedDocker : launches
+        nestedDocker --> isolatedContainer : launches any container via runc
+    }
+    dockerImg.kata <.. loop0 : backing file
+}
+
+@enduml

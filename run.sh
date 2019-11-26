@@ -1,22 +1,12 @@
 #!/bin/bash -eux
 
-# CONFIG: adjust desired container names and configs here
-BARE_METAL_PROXY_CONTAINER_NAME="kata-in-docker"
-VM_CONTAINER_NAME="kata"
-RUNC_IN_KATA_CONTAINER_NAME="docker-in-kata"
-
-# DEDUCED CONFIG: don't mess with these parameters unless you know what you are doing
 SCRIPT_DIR="$(dirname $(readlink -f ${0}))"
+source "${SCRIPT_DIR}/common.sh"
 VOLUMES_DIR="${SCRIPT_DIR}/volumes"
 LOCAL_DOCKER_VOLUME="${VOLUMES_DIR}/var/lib/docker"
 
-# Runtime logic
-# TODO: automate inclusion of nested systemd container somehow (consider using docker export)
-docker build "${SCRIPT_DIR}" \
-    --tag "${BARE_METAL_PROXY_CONTAINER_NAME}"
-
-# TODO: look into using the --rm flag here (I guess it can work with --detach now)
 docker run \
+    --cap-add=ALL \
     --cap-add=NET_ADMIN \
     --cap-add=SYS_ADMIN \
     --cap-add=SYS_RESOURCE \
@@ -42,19 +32,20 @@ docker run \
     --tty \
     "${BARE_METAL_PROXY_CONTAINER_NAME}"
 
-# TODO: make this smart enough to not require a sleep.  Maybe do until a port goes up
-sleep 1
+while true ; do
+    docker exec \
+        --interactive \
+        --tty \
+        "${BARE_METAL_PROXY_CONTAINER_NAME}" \
+        /bin/sh -c "docker load < /volumes/kata-in-docker.tar" && break
+    sleep 0.2
+done
 
-docker exec \
-    --interactive \
-    --tty \
-    "${BARE_METAL_PROXY_CONTAINER_NAME}" \
-    /bin/sh -c "docker load < /volumes/kata-in-docker.tar"
 
-# TODO: remove this cleanup logic when you are not testing or hide it behind a flag.  It is a huge overreach to just
-#       blow away a container like this without any kind of warning or active consent from the user.
 # NOTE: This is just a cleanup command (albeit an inelegant one).  We may have leftover container we don't care about
 #       during testing. The real problem here is the || true at the end.  May need a
+# TODO: remove this cleanup logic when you are not testing or hide it behind a flag.  It is a huge overreach to just
+#       blow away a container like this without any kind of warning or active consent from the user.
 docker exec \
     --interactive \
     --tty \
@@ -69,10 +60,14 @@ docker exec \
     --tty \
     "${BARE_METAL_PROXY_CONTAINER_NAME}" \
     docker run \
+        --cap-add=ALL \
         --cap-add=NET_ADMIN \
         --cap-add=SYS_ADMIN \
         --cap-add=SYS_RESOURCE \
         --detach \
+        --device /dev/kvm:r \
+        --device /dev/net/tun:rwm \
+        --device /dev/vhost-net:rwm \
         --hostname "${VM_CONTAINER_NAME}" \
         --interactive \
         --mount type=bind,source=/sys/fs/cgroup,target=/sys/fs/cgroup,readonly \
@@ -81,22 +76,24 @@ docker exec \
         --mount type=tmpfs,destination=/tmp \
         --name "${VM_CONTAINER_NAME}" \
         --runtime kata \
+        --security-opt seccomp=unconfined \
         --sysctl net.ipv4.ip_forward=1 \
         --tty \
         kata-in-docker
 
-# TODO: make this smart enough to not require a sleep.  Maybe do until a port goes up
-sleep 1
-
-docker exec \
-    --interactive \
-    --tty \
-    "${BARE_METAL_PROXY_CONTAINER_NAME}" \
+while true; do
     docker exec \
         --interactive \
         --tty \
-        "${VM_CONTAINER_NAME}" \
-        /volumes/setup.sh
+        "${BARE_METAL_PROXY_CONTAINER_NAME}" \
+        docker exec \
+            --interactive \
+            --tty \
+            "${VM_CONTAINER_NAME}" \
+            /volumes/setup.sh \
+    && break
+    sleep 0.2
+done
 
 docker exec \
     --interactive \
@@ -111,7 +108,7 @@ docker exec \
             --interactive \
             --name "${RUNC_IN_KATA_CONTAINER_NAME}" \
             --rm \
-            --runtime runc \
+            --runtime kata \
             --tty \
             debian:buster \
             bash
