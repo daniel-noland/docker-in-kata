@@ -1,1 +1,0 @@
-loopbackDevice=$(losetup --find --show volumes/var_lib_docker.img)

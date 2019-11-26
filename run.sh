@@ -12,7 +12,6 @@ LOCAL_DOCKER_VOLUME="${VOLUMES_DIR}/var/lib/docker"
 
 # Runtime logic
 # TODO: automate inclusion of nested systemd container somehow (consider using docker export)
-# TODO: pass in block device or directory to persist built docker artifacts
 docker build "${SCRIPT_DIR}" \
     --tag "${BARE_METAL_PROXY_CONTAINER_NAME}"
 
@@ -23,7 +22,6 @@ docker run \
     --cap-add=SYS_RESOURCE \
     --detach \
     --device /dev/kvm:r \
-    --device /dev/loop0 \
     --device /dev/net/tun:r \
     --device /dev/vhost-net:rm \
     --env container=docker \
@@ -37,6 +35,7 @@ docker run \
     --mount type=tmpfs,destination=/tmp \
     --mount type=tmpfs,destination=/var/run \
     --name "${BARE_METAL_PROXY_CONTAINER_NAME}" \
+    --rm \
     --runtime runc \
     --security-opt seccomp=unconfined \
     --stop-signal=RTMIN+3 \
@@ -74,7 +73,6 @@ docker exec \
         --cap-add=SYS_ADMIN \
         --cap-add=SYS_RESOURCE \
         --detach \
-        --device /dev/loop0 \
         --hostname "${VM_CONTAINER_NAME}" \
         --interactive \
         --mount type=bind,source=/sys/fs/cgroup,target=/sys/fs/cgroup,readonly \
@@ -98,7 +96,7 @@ docker exec \
         --interactive \
         --tty \
         "${VM_CONTAINER_NAME}" \
-        sh -c "mkdir -p /var/lib/docker && mount /dev/loop0 /var/lib/docker && systemctl start docker"
+        /volumes/setup.sh
 
 docker exec \
     --interactive \
