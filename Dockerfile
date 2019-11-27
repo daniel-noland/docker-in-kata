@@ -1,6 +1,4 @@
-FROM debian:buster as libvirtd
-
-COPY ./assets/etc/apt/sources.list /etc/apt/sources.list
+FROM debian:buster as nested-kata-build-assistant
 
 RUN apt-get update \
  && apt-get install --yes --no-install-recommends \
@@ -8,6 +6,8 @@ RUN apt-get update \
     bc \
     bison \
     bridge-utils \
+    btrfs-progs \
+    build-essential \
     ca-certificates \
     cpio \
     curl \
@@ -17,17 +17,28 @@ RUN apt-get update \
     libelf-dev \
     libncurses5-dev \
     libssl-dev \
+    lzop \
     openssh-client \
     openssh-server \
     software-properties-common \
     systemd \
     xz-utils
 
+COPY ./assets/etc/apt/sources.list /etc/apt/sources.list
+
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
 RUN add-apt-repository \
        "deb [arch=amd64] https://download.docker.com/linux/debian \
        $(lsb_release -cs) \
        stable"
+
+RUN apt-get update \
+ && apt-get install --yes --no-install-recommends \
+    containerd.io \
+    docker-ce \
+    docker-ce-cli
+
+FROM nested-kata-build-assistant as kata
 
 ENV ARCH=x86_64
 ENV KATA_BRANCH=master
@@ -39,9 +50,6 @@ RUN curl -sL http://download.opensuse.org/repositories/home:/katacontainers:/rel
 
 RUN apt-get update \
  && apt-get install --yes --no-install-recommends \
-    containerd.io \
-    docker-ce \
-    docker-ce-cli \
     kata-proxy \
     kata-runtime \
     kata-shim
@@ -62,7 +70,6 @@ WORKDIR /root/go/src/github.com/kata-containers/packaging/kernel
 RUN wget -q "https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.tar.xz" \
  && tar xf linux-5.4.tar.xz
 COPY ./assets/kernel.config linux-5.4/.config
-RUN apt-get install --yes --no-install-recommends build-essential
 
 RUN ./build-kernel.sh -c linux-5.4/.config -k linux-5.4/ setup \
  && ./build-kernel.sh -c linux-5.4/.config -k linux-5.4/ build \

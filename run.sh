@@ -1,7 +1,10 @@
 #!/bin/bash -eux
 
+BARE_METAL_PROXY_CONTAINER_NAME="kata-in-docker"
+VM_CONTAINER_NAME="kata"
+RUNC_IN_KATA_CONTAINER_NAME="docker-in-kata"
+
 SCRIPT_DIR="$(dirname $(readlink -f ${0}))"
-source "${SCRIPT_DIR}/common.sh"
 VOLUMES_DIR="${SCRIPT_DIR}/volumes"
 LOCAL_DOCKER_VOLUME="${VOLUMES_DIR}/var/lib/docker"
 
@@ -47,7 +50,8 @@ while true ; do
         --interactive \
         --tty \
         "${BARE_METAL_PROXY_CONTAINER_NAME}" \
-        /bin/sh -c "docker load < /volumes/kata-in-docker.tar" && break
+        /bin/sh -c "lzop --decompress --to-stdout /volumes/kata-in-docker.tar.lzo | docker load" \
+    && break
     sleep 0.2
 done
 
@@ -87,8 +91,8 @@ docker exec \
         --cpus=$(nproc) \
         --detach \
         --device=/dev/kvm:r \
-        --device=/dev/net/tun:rwm \
-        --device=/dev/vhost-net:rwm \
+        --device=/dev/net/tun:rm \
+        --device=/dev/vhost-net:rm \
         --dns=8.8.8.8 \
         --hostname="${VM_CONTAINER_NAME}" \
         --interactive \
@@ -97,7 +101,6 @@ docker exec \
         --mount type=tmpfs,destination=/run \
         --mount type=tmpfs,destination=/tmp \
         --name="${VM_CONTAINER_NAME}" \
-        --network="${VM_CONTAINER_NAME}" \
         --publish=2222:22/tcp \
         --runtime=kata \
         --security-opt seccomp=unconfined \
@@ -128,9 +131,6 @@ docker exec \
         --tty \
         "${VM_CONTAINER_NAME}" \
         systemctl start sshd
-
-sudo ip route del 10.123.1.0/24 || true
-sudo ip route add 10.123.1.0/24 via 10.123.0.2
 
 docker exec \
     --interactive \
