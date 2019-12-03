@@ -2,7 +2,7 @@
 skinparam componentStyle uml2
 
 package "Physical Machine" as physical {
-    initial_setup.sh as initialSetup
+    build.sh as initialSetup
     initialSetup ....> proxy : creates image
     run.sh as runScript
     [docker daemon] as outerDocker

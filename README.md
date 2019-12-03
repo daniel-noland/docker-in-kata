@@ -7,7 +7,7 @@ If you just want to see a docker daemon run in a kata container you can do so wi
 ```bash
 THIS_REPO="git@github.com:daniel-noland/docker-in-kata.git"
 git clone "$THIS_REPO" && cd docker-in-kata
-./initial_setup.sh # Only needed the first time you run or if you would like to start over
+./build.sh # Only needed the first time you run or if you would like to start over
 ./run.sh
 ```
 
@@ -103,8 +103,7 @@ I did several non-obvious things to make a docker daemon run properly inside a k
 
    ![docs/relationships.svg](docs/relationships.svg)
 
-# Future plans
-
+## Future plans
 
 I think that the security of the setup is one area which can be greatly
 improved.  I did my best to reduce the privileges granted to each of the outer
@@ -118,27 +117,22 @@ try the new linux kernel 5.4 lockdown mode.
 
 I have a few other things I would like to accomplish with this project:
 
-1. Fix the container networking so that the nested kata container is available
-   via ssh.  That way you can set
-   `DOCKER_HOST=ssh://$SOME_USER@$THE_KATA_CONTAINER` to use the kata container
-   as a transparent build / run environment.  This should be easy, it will just
-   take some plumbing.
-2. Replace systemd with supervisord in one or both of the outer two containers.
+1. Replace systemd with supervisord in one or both of the outer two containers.
    I don't think anything as heavy as systemd is really necessary here, it is
    just the thing I am most familiar with.  Supervisord is likely better suited
    to this task.
-3. Make a parallel version where I replace docker with podman.  I have managed
+2. Make a parallel version where I replace docker with podman.  I have managed
    to make podman work with the btrfs graph driver and with kata elsewhere so
    in theory this approach should function.  It may also offer improved
    security since podman would not require exposing a root privileged daemon.
    The podman approach would require that I not replace systemd with
    supervisord.
-4. Look into running an entire mesos + marathon, kubernetes, or nomad cluster
+3. Look into running an entire mesos + marathon, kubernetes, or nomad cluster
    inside this setup at the first layer of containerization.  This approach
    would provide a playground for the design and development of distributed
    systems / micro service architectures (you could quickly test scaling
    behavior, fault tolerance, failover).
-5. Look into more convenient ways of sharing containers between the nesting
+4. Look into more convenient ways of sharing containers between the nesting
    scopes.  Right now the only known ways to share container images between the
    kata scope and the host scope are:
    1. Use a shared container registry.  Configuring access credentials makes
@@ -153,7 +147,7 @@ I have a few other things I would like to accomplish with this project:
       nested `/var/lib/docker` is likely of little use.
    3. Use `docker save` / `docker load` and a shared volume or `docker copy` to
       exchange tar files.  This approach is very cumbersome.
-6. Look into more convenient ways of sharing container images between different
+5. Look into more convenient ways of sharing container images between different
    nested docker daemons.  This functionality would be very handy for testing
    distributed systems simulations where each kata container is functioning as
    a proxy for a distinct physical host.  One approach which may prove useful
